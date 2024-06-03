@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  aws-s3-lambdas
+
+  Sample SAM Template for aws-s3-lambdas
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+
+Resources:
+  ProjectApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: true # sets for all methods
+  GetUserFilesFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: get-user-files/
+      Handler: app.lambdaHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Policies: 
+        - AmazonDynamoDBReadOnlyAccess
+        - AmazonS3ReadOnlyAccess
+      Events:
+        PostUserFiles:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ProjectApi
+            Path: /getUserFiles
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+      MemorySize: 256
+      Timeout: 20
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: 's3-tagged-files-test'
+          S3_BUCKET: 'tagged-files-test'
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - app.ts
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  GetUserFilesApi:
+    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    Value: !Sub "https://${ProjectApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/getUserFiles/"
+  GetUserFilesFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt GetUserFilesFunction.Arn
+  GetUserFilesFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt GetUserFilesFunctionRole.Arn
